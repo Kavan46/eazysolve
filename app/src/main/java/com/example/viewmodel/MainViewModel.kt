@@ -155,9 +155,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _todayDailyChallenge.value = DailyChallengeGenerator.getChallengeForDate()
     }
 
-    fun signInWithGoogle(onResult: (Boolean, String?) -> Unit) {
+    fun signInWithGoogle(activityContext: android.content.Context? = null, onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
-            val result = authRepository.signInWithGoogle()
+            val result = authRepository.signInWithGoogle(activityContext)
             if (result.isSuccess) {
                 // Fetch cloud data and merge
                 val cloudData = authRepository.fetchCloudUserData()

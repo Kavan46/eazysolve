@@ -52,15 +52,17 @@ fun ProfileScreen(
     val userStats by viewModel.userStats.collectAsState()
     val progressList by viewModel.gameProgressList.collectAsState()
     val userProfile by viewModel.currentUserProfile.collectAsState()
+    val appSettings by viewModel.appSettings.collectAsState()
     val syncStatus by viewModel.cloudSyncStatus.collectAsState()
     val extendedColors = LocalExtendedColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val totalLevelsCleared = progressList.sumOf { (it.highestLevel - 1).coerceAtLeast(0) }
     val totalStars = progressList.sumOf { it.totalStars }
 
-    val isGoogleSignedIn = userProfile.isSignedIn
-    val googleAccountEmail = userProfile.email.ifEmpty { "kmatrixstudio@gmail.com" }
-    val googleDisplayName = userProfile.displayName.ifEmpty { "Puzzle Champion" }
+    val isGoogleSignedIn = userProfile.isSignedIn || appSettings.isGoogleSignedIn
+    val googleAccountEmail = userProfile.email.ifEmpty { appSettings.userEmail }
+    val googleDisplayName = userProfile.displayName.ifEmpty { appSettings.userDisplayName.ifEmpty { "Puzzle Champion" } }
     var showSignInDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isSigningIn by remember { mutableStateOf(false) }
@@ -112,7 +114,7 @@ fun ProfileScreen(
                         } else {
                             isSigningIn = true
                             errorMessage = null
-                            viewModel.signInWithGoogle { success, error ->
+                            viewModel.signInWithGoogle(context) { success, error ->
                                 isSigningIn = false
                                 if (success) {
                                     showSignInDialog = false

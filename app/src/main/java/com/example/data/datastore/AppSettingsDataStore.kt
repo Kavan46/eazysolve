@@ -31,7 +31,13 @@ data class AppSettings(
     val hasCompletedOnboarding: Boolean = false,
     val seenTutorials: Set<String> = emptySet(),
     val completedDailyDates: Set<String> = emptySet(),
-    val adaptiveDifficultyEnabled: Boolean = true
+    val adaptiveDifficultyEnabled: Boolean = true,
+    val userUid: String = "",
+    val userDisplayName: String = "",
+    val userEmail: String = "",
+    val userPhotoUrl: String = "",
+    val isGoogleSignedIn: Boolean = false,
+    val lastSignInTimestamp: Long = 0L
 )
 
 class AppSettingsDataStore(private val context: Context) {
@@ -50,6 +56,12 @@ class AppSettingsDataStore(private val context: Context) {
         val SEEN_TUTORIALS = stringSetPreferencesKey("seen_game_tutorials")
         val COMPLETED_DAILY_DATES = stringSetPreferencesKey("completed_daily_dates")
         val ADAPTIVE_DIFFICULTY_ENABLED = booleanPreferencesKey("adaptive_difficulty_enabled")
+        val USER_UID = stringPreferencesKey("user_uid")
+        val USER_DISPLAY_NAME = stringPreferencesKey("user_display_name")
+        val USER_EMAIL = stringPreferencesKey("user_email")
+        val USER_PHOTO_URL = stringPreferencesKey("user_photo_url")
+        val IS_GOOGLE_SIGNED_IN = booleanPreferencesKey("is_google_signed_in")
+        val LAST_SIGN_IN_TIMESTAMP = longPreferencesKey("last_sign_in_timestamp")
     }
 
     val appSettingsFlow: Flow<AppSettings> = context.appSettingsDataStore.data
@@ -88,9 +100,37 @@ class AppSettingsDataStore(private val context: Context) {
                 hasCompletedOnboarding = preferences[PreferencesKeys.HAS_COMPLETED_ONBOARDING] ?: false,
                 seenTutorials = preferences[PreferencesKeys.SEEN_TUTORIALS] ?: emptySet(),
                 completedDailyDates = preferences[PreferencesKeys.COMPLETED_DAILY_DATES] ?: emptySet(),
-                adaptiveDifficultyEnabled = preferences[PreferencesKeys.ADAPTIVE_DIFFICULTY_ENABLED] ?: true
+                adaptiveDifficultyEnabled = preferences[PreferencesKeys.ADAPTIVE_DIFFICULTY_ENABLED] ?: true,
+                userUid = preferences[PreferencesKeys.USER_UID] ?: "",
+                userDisplayName = preferences[PreferencesKeys.USER_DISPLAY_NAME] ?: "",
+                userEmail = preferences[PreferencesKeys.USER_EMAIL] ?: "",
+                userPhotoUrl = preferences[PreferencesKeys.USER_PHOTO_URL] ?: "",
+                isGoogleSignedIn = preferences[PreferencesKeys.IS_GOOGLE_SIGNED_IN] ?: false,
+                lastSignInTimestamp = preferences[PreferencesKeys.LAST_SIGN_IN_TIMESTAMP] ?: 0L
             )
         }
+
+    suspend fun saveGoogleUser(uid: String, displayName: String, email: String, photoUrl: String = "") {
+        context.appSettingsDataStore.edit { preferences ->
+            preferences[PreferencesKeys.USER_UID] = uid
+            preferences[PreferencesKeys.USER_DISPLAY_NAME] = displayName
+            preferences[PreferencesKeys.USER_EMAIL] = email
+            preferences[PreferencesKeys.USER_PHOTO_URL] = photoUrl
+            preferences[PreferencesKeys.IS_GOOGLE_SIGNED_IN] = true
+            preferences[PreferencesKeys.LAST_SIGN_IN_TIMESTAMP] = System.currentTimeMillis()
+        }
+    }
+
+    suspend fun clearGoogleUser() {
+        context.appSettingsDataStore.edit { preferences ->
+            preferences.remove(PreferencesKeys.USER_UID)
+            preferences.remove(PreferencesKeys.USER_DISPLAY_NAME)
+            preferences.remove(PreferencesKeys.USER_EMAIL)
+            preferences.remove(PreferencesKeys.USER_PHOTO_URL)
+            preferences[PreferencesKeys.IS_GOOGLE_SIGNED_IN] = false
+            preferences.remove(PreferencesKeys.LAST_SIGN_IN_TIMESTAMP)
+        }
+    }
 
     suspend fun updateAdaptiveDifficultyEnabled(enabled: Boolean) {
         context.appSettingsDataStore.edit { preferences ->

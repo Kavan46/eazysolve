@@ -37,9 +37,17 @@ fun SettingsScreen(
     onNavigateToOnboarding: () -> Unit = {}
 ) {
     val appSettings by viewModel.appSettings.collectAsState()
+    val userProfile by viewModel.currentUserProfile.collectAsState()
+    val syncStatus by viewModel.cloudSyncStatus.collectAsState()
     val hapticFeedback = LocalHapticFeedback.current
     val extendedColors = LocalExtendedColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     var showResetDialog by remember { mutableStateOf(false) }
+    var isSigningIn by remember { mutableStateOf(false) }
+    var authErrorMessage by remember { mutableStateOf<String?>(null) }
+    val isGoogleSignedIn = userProfile.isSignedIn || appSettings.isGoogleSignedIn
+    val userDisplayName = userProfile.displayName.ifEmpty { appSettings.userDisplayName.ifEmpty { "Guest Solver" } }
+    val userEmail = userProfile.email.ifEmpty { appSettings.userEmail }
 
     if (showResetDialog) {
         AlertDialog(
@@ -814,6 +822,178 @@ fun SettingsScreen(
                                 ),
                                 modifier = Modifier.testTag("notifications_toggle")
                             )
+                        }
+                    }
+                }
+            }
+
+            // Google Authentication & Cloud Sync
+            item {
+                Text(
+                    text = "GOOGLE ACCOUNT & CLOUD SYNC",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    letterSpacing = 0.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                )
+            }
+
+            item {
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = extendedColors.cardBackground,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, extendedColors.cardBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isGoogleSignedIn) AccentEmerald.copy(alpha = 0.15f) else PrimaryIndigo.copy(alpha = 0.12f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isGoogleSignedIn) AccentEmerald.copy(alpha = 0.3f) else PrimaryIndigo.copy(alpha = 0.3f)),
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(if (isGoogleSignedIn) "✓" else "G", fontSize = 22.sp, fontWeight = FontWeight.Black, color = if (isGoogleSignedIn) AccentEmerald else PrimaryIndigo)
+                                }
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (isGoogleSignedIn) userDisplayName else "Google Sign-In",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (isGoogleSignedIn) userEmail.ifEmpty { "Connected Account" } else "Sign in to backup stars, streaks & coins",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Stored session status badge
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = extendedColors.cardBackgroundElevated,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, extendedColors.subtleBorder.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "DATASTORE SESSION",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 0.5.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = if (isGoogleSignedIn) "Stored persistently on device" else "Guest Mode (Local DB only)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (isGoogleSignedIn) AccentEmerald else AccentAmber
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(100.dp),
+                                    color = if (isGoogleSignedIn) AccentEmeraldBg else AccentAmber.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = if (isGoogleSignedIn) "STORED" else "OFFLINE",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp,
+                                        color = if (isGoogleSignedIn) AccentEmerald else AccentAmber,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        authErrorMessage?.let { err ->
+                            Text(
+                                text = err,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ErrorRed
+                            )
+                        }
+
+                        HorizontalDivider(color = extendedColors.subtleBorder.copy(alpha = 0.6f))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            if (isGoogleSignedIn) {
+                                OutlinedButton(
+                                    onClick = {
+                                        HapticManager.playTap(hapticFeedback)
+                                        SoundManager.playTap()
+                                        viewModel.syncToCloud()
+                                    },
+                                    shape = RoundedCornerShape(100.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryIndigo.copy(alpha = 0.5f)),
+                                    modifier = Modifier.weight(1f).testTag("sync_cloud_btn")
+                                ) {
+                                    Text("Sync Cloud ☁️", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryIndigo)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        HapticManager.playHeavyClick(hapticFeedback)
+                                        SoundManager.playTap()
+                                        viewModel.signOut()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = ErrorRed),
+                                    shape = RoundedCornerShape(100.dp),
+                                    modifier = Modifier.weight(1f).testTag("google_signout_btn")
+                                ) {
+                                    Text("Sign Out", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+                                }
+                            } else {
+                                Button(
+                                    onClick = {
+                                        isSigningIn = true
+                                        authErrorMessage = null
+                                        HapticManager.playTap(hapticFeedback)
+                                        SoundManager.playTap()
+                                        viewModel.signInWithGoogle(context) { success, err ->
+                                            isSigningIn = false
+                                            if (success) {
+                                                SoundManager.playCoinReward()
+                                                HapticManager.playSuccess(hapticFeedback)
+                                            } else {
+                                                authErrorMessage = err
+                                                HapticManager.playError(hapticFeedback)
+                                            }
+                                        }
+                                    },
+                                    enabled = !isSigningIn,
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigo),
+                                    shape = RoundedCornerShape(100.dp),
+                                    modifier = Modifier.fillMaxWidth().testTag("google_signin_btn")
+                                ) {
+                                    if (isSigningIn) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = PureWhite, strokeWidth = 2.dp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
+                                    Text("Sign in with Google", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+                                }
+                            }
                         }
                     }
                 }

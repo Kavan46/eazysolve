@@ -8,6 +8,7 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import com.example.data.datastore.AppSettingsDataStore
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
@@ -15,10 +16,13 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
@@ -45,12 +49,16 @@ data class CloudSyncData(
     val lastUpdated: Long = System.currentTimeMillis()
 )
 
-class AuthRepository(private val context: Context) {
+class AuthRepository(
+    private val context: Context,
+    private val dataStore: AppSettingsDataStore = AppSettingsDataStore(context)
+) {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val credentialManager: CredentialManager = CredentialManager.create(context)
+    private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    // Web Client ID from google-services.json
+    // Web Client ID from google-services.json (Client Type 3)
     val serverClientId = "964950733032-jnl95b4agp7ut9hl071t3snlgp370dot.apps.googleusercontent.com"
 
     private val _currentUserState = MutableStateFlow(getCurrentUserProfile())
@@ -61,15 +69,27 @@ class AuthRepository(private val context: Context) {
 
     init {
         auth.addAuthStateListener { firebaseAuth ->
-            _currentUserState.value = mapFirebaseUser(firebaseAuth.currentUser)
+            val user = firebaseAuth.currentUser
+            val profile = mapFirebaseUser(user)
+            _currentUserState.value = profile
+            repositoryScope.launch {
+                if (user != null && !user.isAnonymous) {
+                    dataStore.saveGoogleUser(
+                        uid = user.uid,
+                        displayName = user.displayName ?: "Puzzle Champion",
+                        email = user.email ?: "",
+                        photoUrl = user.photoUrl?.toString() ?: ""
+                    )
+                }
+            }
         }
     }
 
     private fun mapFirebaseUser(user: FirebaseUser?): UserProfile {
-        return if (user != null) {
+        return if (user != null && !user.isAnonymous) {
             UserProfile(
                 uid = user.uid,
-                displayName = user.displayName ?: "Puzzle Master",
+                displayName = user.displayName ?: "Puzzle Champion",
                 email = user.email ?: "",
                 photoUrl = user.photoUrl?.toString() ?: "",
                 isAnonymous = user.isAnonymous,
@@ -87,8 +107,9 @@ class AuthRepository(private val context: Context) {
         return mapFirebaseUser(auth.currentUser)
     }
 
-    suspend fun signInWithGoogle(): Result<UserProfile> = withContext(Dispatchers.IO) {
+    suspend fun signInWithGoogle(activityContext: Context? = null): Result<UserProfile> = withContext(Dispatchers.IO) {
         try {
+            _syncStatus.value = "Authenticating with Google..."
             val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(serverClientId)
                 .build()
 
@@ -98,7 +119,7 @@ class AuthRepository(private val context: Context) {
 
             val result = credentialManager.getCredential(
                 request = request,
-                context = context
+                context = activityContext ?: context
             )
 
             val credential = result.credential
@@ -114,16 +135,31 @@ class AuthRepository(private val context: Context) {
 
                 val profile = mapFirebaseUser(user)
                 _currentUserState.value = profile
+                
+                // Store Google Sign-in state and user info in DataStore
+                if (user != null) {
+                    dataStore.saveGoogleUser(
+                        uid = user.uid,
+                        displayName = profile.displayName,
+                        email = profile.email,
+                        photoUrl = profile.photoUrl
+                    )
+                }
+
                 _syncStatus.value = "Connected as ${profile.displayName}"
                 Result.success(profile)
             } else {
-                Result.failure(Exception("Unsupported credential type received"))
+                val err = "Unsupported credential type: ${credential::class.java.simpleName}"
+                _syncStatus.value = "Auth failed"
+                Result.failure(Exception(err))
             }
         } catch (e: GetCredentialCancellationException) {
             Log.w("AuthRepository", "User cancelled Google Sign In")
+            _syncStatus.value = "Sign in cancelled"
             Result.failure(e)
         } catch (e: Exception) {
             Log.e("AuthRepository", "Google Sign In Error", e)
+            _syncStatus.value = "Sign in error: ${e.localizedMessage}"
             Result.failure(e)
         }
     }
@@ -132,6 +168,7 @@ class AuthRepository(private val context: Context) {
         try {
             credentialManager.clearCredentialState(ClearCredentialStateRequest())
             auth.signOut()
+            dataStore.clearGoogleUser()
             _currentUserState.value = UserProfile(displayName = "Guest Solver", isSignedIn = false)
             _syncStatus.value = "Signed out"
         } catch (e: Exception) {
@@ -144,7 +181,7 @@ class AuthRepository(private val context: Context) {
      */
     suspend fun syncUserDataToCloud(syncData: CloudSyncData): Result<Boolean> = withContext(Dispatchers.IO) {
         val user = auth.currentUser
-        if (user == null) {
+        if (user == null || user.isAnonymous) {
             _syncStatus.value = "Guest mode (Local only)"
             return@withContext Result.success(false)
         }
@@ -181,6 +218,7 @@ class AuthRepository(private val context: Context) {
      */
     suspend fun fetchCloudUserData(): CloudSyncData? = withContext(Dispatchers.IO) {
         val user = auth.currentUser ?: return@withContext null
+        if (user.isAnonymous) return@withContext null
         try {
             val docRef = firestore.collection("users").document(user.uid)
             val snapshot = docRef.get().await()
