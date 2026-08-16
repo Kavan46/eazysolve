@@ -1,0 +1,70 @@
+<resources>
+    <string name="app_name">Eazy Solve Games</string>
+    <string name="app_tagline">Think. Play. Solve.</string>
+    
+    <!-- Game Names -->
+    <string name="game_name_zip">ZIP</string>
+    <string name="game_tagline_zip">Pathfinding Grid</string>
+    <string name="game_desc_zip">Use your pathfinding skills to move through the grid without crossing your path.</string>
+    
+    <string name="game_name_sudoku">Mini Sudoku</string>
+    <string name="game_tagline_sudoku">Compact Sudoku</string>
+    <string name="game_desc_sudoku">The classic number puzzle made mini and fast with 4×4 and 6×6 compact boards.</string>
+    
+    <string name="game_name_tango">Tango</string>
+    <string name="game_tagline_tango">Sun &amp; Moon Logic</string>
+    <string name="game_desc_tango">Use pure reasoning to balance Sun and Moon symbols across the grid.</string>
+    
+    <string name="game_name_queens">Queens</string>
+    <string name="game_tagline_queens">Crown Placement</string>
+    <string name="game_desc_queens">Use your spatial logic to place queens safely inside colored territory zones.</string>
+    
+    <string name="game_name_crossclimb">Crossclimb</string>
+    <string name="game_tagline_crossclimb">Word Ladder Trivia</string>
+    <string name="game_desc_crossclimb">Solve word clues by changing one letter at a time to climb the trivia ladder.</string>
+    
+    <string name="game_name_pinpoint">Pinpoint</string>
+    <string name="game_tagline_pinpoint">Pattern &amp; Association</string>
+    <string name="game_desc_pinpoint">Discover the hidden category or common link connecting the revealed clues.</string>
+    
+    <string name="game_name_wend">Wend</string>
+    <string name="game_tagline_wend">Word Wander Grid</string>
+    <string name="game_desc_wend">Wander through the grid to discover all themed words hidden in the letters.</string>
+    
+    <string name="game_name_patches">Patches</string>
+    <string name="game_tagline_patches">Geometric Shape Fit</string>
+    <string name="game_desc_patches">Fit every colorful geometric patch onto the board without any overlap.</string>
+    
+    <string name="game_name_bubble_sort">Bubble Sort</string>
+    <string name="game_tagline_bubble_sort">Color Ball Sort</string>
+    <string name="game_desc_bubble_sort">Sort colorful bubbles into matching tubes until each tube holds one single color.</string>
+    
+    <string name="game_name_bubble_shooter">Bubble Shooting</string>
+    <string name="game_tagline_bubble_shooter">Aim &amp; Pop Arcade</string>
+    <string name="game_desc_bubble_shooter">Aim, launch, and match 3 or more bubbles of the same color to clear the ceiling.</string>
+    
+    <string name="game_name_tile_match">Tile Match</string>
+    <string name="game_tagline_tile_match">Triple Tray Match</string>
+    <string name="game_desc_tile_match">Pick tiles from the multilayer stack into your tray. Match triples to clear the board.</string>
+
+    <!-- General UI & Overlay Strings -->
+    <string name="how_to_play">HOW TO PLAY</string>
+    <string name="objective">OBJECTIVE</string>
+    <string name="pro_tip">PRO TIP</string>
+    <string name="got_it_lets_play">GOT IT! LET\'S PLAY</string>
+    <string name="close">Close</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="restart">Restart</string>
+    <string name="next_level">Next Level</string>
+    <string name="daily_challenge">Daily Challenge</string>
+    <string name="daily_bonus">Daily Bonus</string>
+    <string name="stats_iq">Brain IQ</string>
+    <string name="stats_solved">Puzzles Solved</string>
+    <string name="stats_stars">Stars Earned</string>
+    <string name="stats_streak">Daily Streak</string>
+    <string name="difficulty_easy">Easy / Relaxed</string>
+    <string name="difficulty_medium">Medium / Standard</string>
+    <string name="difficulty_hard">Hard / Master</string>
+    <string name="difficulty_expert">Expert / Grandmaster</string>
+</resources>
